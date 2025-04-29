@@ -66,8 +66,12 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
       protected: true,
       credentials: {
-        username: (import.meta.env.VITE_REACT_APP_USERNAME as string) || '',
-        password: (import.meta.env.VITE_REACT_APP_PASSWORD as string) || ''
+        name: 'Geoportal¹ - Lotes Aprovados e Aguardando Registro',
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
+      protected: true,
+      credentials: {
+        username: process.env.REACT_APP_USERNAME || '',
+        password: process.env.REACT_APP_PASSWORD || ''
       }
     },
     {
@@ -75,8 +79,8 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/6',
       protected: true,
       credentials: {
-        username: (import.meta.env.VITE_REACT_APP_USERNAME as string) || '',
-        password: (import.meta.env.VITE_REACT_APP_PASSWORD as string) || ''
+        username: process.env.REACT_APP_USERNAME || '',
+        password: process.env.REACT_APP_PASSWORD || ''
       }
     },
     {
