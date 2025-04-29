@@ -66,8 +66,8 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
       protected: true,
       credentials: {
-        username: process.env.REACT_APP_USERNAME || '',
-        password: process.env.REACT_APP_PASSWORD || ''
+        username: (import.meta.env.VITE_REACT_APP_USERNAME as string) || '',
+        password: (import.meta.env.VITE_REACT_APP_PASSWORD as string) || ''
       }
     },
     {
@@ -75,8 +75,8 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/6',
       protected: true,
       credentials: {
-        username: process.env.REACT_APP_USERNAME || '',
-        password: process.env.REACT_APP_PASSWORD || ''
+        username: (import.meta.env.VITE_REACT_APP_USERNAME as string) || '',
+        password: (import.meta.env.VITE_REACT_APP_PASSWORD as string) || ''
       }
     },
     {
@@ -135,7 +135,7 @@ function App() {
     });
 
     if (protected_ && credentials) {
-      params.append('token', await getToken(serviceUrl, credentials));
+      params.append('token', await getToken(credentials));
     }
 
     const response = await fetch(`${serviceUrl}/query?${params}`);
@@ -153,7 +153,7 @@ function App() {
     };
   };
 
-  const getToken = async (serviceUrl: string, credentials: { username: string; password: string }) => {
+  const getToken = async (credentials: { username: string; password: string }) => {
     const tokenUrl = 'https://www.geoservicos.ide.df.gov.br/arcgis/tokens/generateToken';
     const params = new URLSearchParams({
       username: credentials.username,
@@ -163,7 +163,7 @@ function App() {
       expiration: '60',
       f: 'json'
     });
-
+  
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -171,13 +171,13 @@ function App() {
       },
       body: params
     });
-
+  
     const data = await response.json();
     if (data.error) {
       throw new Error('Erro ao obter token de autenticação');
     }
-
-    return data.token;
+  
+    return data.token; // Retorna o token obtido
   };
 
     // Função para processar as coordenadas e realizar as consultas
