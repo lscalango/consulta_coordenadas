@@ -1,45 +1,31 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Search } from 'lucide-react';
-import proj4 from 'proj4'; // Importa a biblioteca proj4 para conversão de coordenadas
 
-// Interface para representar os atributos de uma feição geográfica
+// Interface para representar os atributos de uma feição retornada pela consulta
 interface FeatureAttributes {
   [key: string]: any;
 }
 
-// Interface para representar o resultado de uma consulta
+// e para o resultado da consulta
 interface QueryResult {
   attributes: FeatureAttributes | null;
   hasIntersection: boolean;
   layerName: string;
 }
 
-// Definição dos sistemas de coordenadas
-proj4.defs([
-  [
-    'EPSG:4326',
-    '+proj=longlat +datum=WGS84 +no_defs' // Sistema de coordenadas em graus decimais
-  ],
-  [
-    'EPSG:31983',
-    '+proj=utm +zone=23 +south +datum=WGS84 +units=m +no_defs' // Sistema UTM Sirgas 23
-  ]
-]);
-
 function App() {
-    // Estado para armazenar as coordenadas fornecidas pelo usuário
+  // Estado para armazenar as coordenadas de entrada
   const [coordinates, setCoordinates] = useState({
     x: '',
     y: ''
   });
-
-  
   const [queryResults, setQueryResults] = useState<QueryResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
-  
-  // Lista de serviços geoespaciais a serem consultados
+
+  // Lista de serviços a serem consultados
+  // Cada serviço tem um nome, uma URL e, opcionalmente, credenciais de autenticação
   const services = [
     {
       name: 'Geoportal - Area de Proteção de Manancial',
@@ -66,12 +52,8 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
       protected: true,
       credentials: {
-        name: 'Geoportal¹ - Lotes Aprovados e Aguardando Registro',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
-      protected: true,
-      credentials: {
-        username: process.env.REACT_APP_USERNAME || '',
-        password: process.env.REACT_APP_PASSWORD || ''
+        username: 'institucional',
+        password: '#inst@seduh'
       }
     },
     {
@@ -79,8 +61,8 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/6',
       protected: true,
       credentials: {
-        username: process.env.REACT_APP_USERNAME || '',
-        password: process.env.REACT_APP_PASSWORD || ''
+        username: 'institucional',
+        password: '#inst@seduh'
       }
     },
     {
@@ -139,7 +121,7 @@ function App() {
     });
 
     if (protected_ && credentials) {
-      params.append('token', await getToken(credentials));
+      params.append('token', await getToken(serviceUrl, credentials));
     }
 
     const response = await fetch(`${serviceUrl}/query?${params}`);
@@ -157,7 +139,7 @@ function App() {
     };
   };
 
-  const getToken = async (credentials: { username: string; password: string }) => {
+  const getToken = async (serviceUrl: string, credentials: { username: string; password: string }) => {
     const tokenUrl = 'https://www.geoservicos.ide.df.gov.br/arcgis/tokens/generateToken';
     const params = new URLSearchParams({
       username: credentials.username,
@@ -167,7 +149,7 @@ function App() {
       expiration: '60',
       f: 'json'
     });
-  
+
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
@@ -175,16 +157,18 @@ function App() {
       },
       body: params
     });
-  
+
     const data = await response.json();
     if (data.error) {
       throw new Error('Erro ao obter token de autenticação');
     }
-  
-    return data.token; // Retorna o token obtido
+
+    return data.token;
   };
 
-    // Função para processar as coordenadas e realizar as consultas
+  // Função para lidar com a consulta ao clicar no botão
+  // Faz a validação das coordenadas e chama a função de consulta para cada serviço
+  // Atualiza o estado com os resultados da consulta
   const handleQuery = async () => {
     setLoading(true);
     setError(null);
@@ -192,20 +176,24 @@ function App() {
     setSelectedLayer(null);
 
     try {
-      // Converte as coordenadas para números
       const x = parseFloat(coordinates.x);
       const y = parseFloat(coordinates.y);
-
+      
       if (isNaN(x) || isNaN(y)) {
         throw new Error('Coordenadas inválidas');
       }
 
-      // Converte as coordenadas de EPSG:4326 para EPSG:31983
-      const [utmX, utmY] = proj4('EPSG:4326', 'EPSG:31983', [x, y]);
-
-      // Realiza as consultas para todos os serviços
       const results = await Promise.all(
-        services.map(service => queryService(service.url, service.name, utmX, utmY))
+        services.map(service => 
+          queryService(
+            service.url, 
+            service.name, 
+            x, 
+            y, 
+            service.protected, 
+            service.credentials
+          )
+        )
       );
 
       setQueryResults(results);
@@ -217,7 +205,9 @@ function App() {
     }
   };
 
-  // Função para renderizar os resultados iniciais
+  // Renderiza os resultados iniciais da consulta
+  // Exibe uma tabela com as camadas consultadas e se houve interseção
+  // Se houver interseção, exibe um botão para ver os detalhes
   const renderInitialResults = () => {
     if (queryResults.length === 0) return null;
 
@@ -255,6 +245,8 @@ function App() {
     );
   };
 
+  // Renderiza os detalhes da feição selecionada
+  // Exibe uma tabela com os atributos da feição
   const renderDetailedResults = () => {
     if (!selectedLayer) return null;
 
@@ -262,7 +254,7 @@ function App() {
     if (!result?.attributes) return null;
 
     const attributes = Object.entries(result.attributes)
-      .filter(([, value]) => value !== null && value !== undefined)
+      .filter(([key, value]) => value !== null && value !== undefined)
       .map(([key, value]) => ({
         label: key,
         value: value.toString()
@@ -310,26 +302,26 @@ function App() {
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Latitude (Graus Decimais)
-              </label>
-              <input
-                type="text"
-                value={coordinates.y}
-                onChange={(e) => setCoordinates(prev => ({ ...prev, y: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ex: -15.9999"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Longitude (Graus Decimais)
+                Coordenada X
               </label>
               <input
                 type="text"
                 value={coordinates.x}
                 onChange={(e) => setCoordinates(prev => ({ ...prev, x: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ex: -47.9999"
+                placeholder="Ex: 202193"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Coordenada Y
+              </label>
+              <input
+                type="text"
+                value={coordinates.y}
+                onChange={(e) => setCoordinates(prev => ({ ...prev, y: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex: 8257253"
               />
             </div>
           </div>
