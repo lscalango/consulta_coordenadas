@@ -56,11 +56,15 @@ function App() {
     {
       name: 'Geportal - Diretrizes Urbanísticas Específicas',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/DIRETRIZES_URBANISTICAS/MapServer/4'
-    }, 
+    },
+    {
+      name: 'Geoportal - Faixa de Domínio - Rodovias',
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/SISTEMA_VIARIO/MapServer/14'
+    },  
     {
       name: 'Geoportal - Lotes Registrados',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Aplicacoes/LOTES_REGISTRADOS/MapServer/0'
-    },    
+    },   
     {
       name: 'Geoportal¹ - Lotes Aprovados e Aguardando Registro',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
@@ -124,24 +128,42 @@ function App() {
   // Função para consultar um serviço específico
   // Faz uma requisição para o serviço e retorna os atributos da feição encontrada
   // Se o serviço exigir autenticação, obtém um token de autenticação
-  const queryService = async (serviceUrl: string, serviceName: string, x: number, y: number, protected_ = false, credentials?: { username: string; password: string }) => {
+  const queryService = async (
+    serviceUrl: string, 
+    serviceName: string, 
+    x: number, 
+    y: number, protected_ = false, 
+    credentials?: { username: string; password: string }) => {
+
+    // Define a tolerância de 3 metros no sistema de coordenadas EPSG:31983
+    const tolerance = 3;
+    
+    // Cria uma geometria de envelope (retângulo) ao redor do ponto
+    const envelope = {
+      xmin: x - tolerance,
+      ymin: y - tolerance,
+      xmax: x + tolerance,
+      ymax: y + tolerance,
+      spatialReference: { wkid: 31983 }
+    };
+
     const params = new URLSearchParams({
-      geometry: `${x},${y}`,
-      geometryType: 'esriGeometryPoint',
-      spatialRel: 'esriSpatialRelIntersects',
-      outFields: '*',
-      returnGeometry: 'false',
-      f: 'json'
+    geometry: JSON.stringify(envelope),
+    geometryType: 'esriGeometryEnvelope',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: '*',
+    returnGeometry: 'false',
+    f: 'json'
     });
 
     if (protected_ && credentials) {
       params.append('token', await getToken(serviceUrl, credentials));
     }
-
+  
     const response = await fetch(`${serviceUrl}/query?${params}`);
-
+  
     const data = await response.json();
-
+  
     if (data.error) {
       throw new Error(data.error.message || 'Erro ao consultar o serviço');
     }
@@ -152,8 +174,9 @@ function App() {
       layerName: serviceName
     };
   };
+  
 
-  const getToken = async (serviceUrl: string, credentials: { username: string; password: string }) => {
+  async function getToken(serviceUrl: string, credentials: { username: string; password: string; }) {
     const tokenUrl = 'https://www.geoservicos.ide.df.gov.br/arcgis/tokens/generateToken';
     const params = new URLSearchParams({
       username: credentials.username,
@@ -178,7 +201,7 @@ function App() {
     }
 
     return data.token;
-  };
+  }
 
   // Função para lidar com a consulta ao clicar no botão
   const handleQuery = async () => {
@@ -428,7 +451,14 @@ function App() {
           {selectedLayer ? renderDetailedResults() : renderInitialResults()}
         </div>
       </div>
-    </div>
+
+    {/* Rodapé */}
+    <footer className="bg-gray-200 text-gray-700 text-center py-4">
+      <p className="text-sm">
+        Nota: Existe uma tolerância de 3 metros do ponto informado para considerar interferências.
+      </p>
+    </footer>
+  </div>  
   );
 }
 
