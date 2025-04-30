@@ -136,7 +136,7 @@ function App() {
     credentials?: { username: string; password: string }) => {
 
     // Define a tolerância de 3 metros no sistema de coordenadas EPSG:31983
-    const tolerance = 3;
+    const tolerance = 3; // metros
     
     // Cria uma geometria de envelope (retângulo) ao redor do ponto
     const envelope = {
