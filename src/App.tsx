@@ -56,11 +56,15 @@ function App() {
     {
       name: 'Geportal - Diretrizes Urbanísticas Específicas',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/DIRETRIZES_URBANISTICAS/MapServer/4'
-    }, 
+    },
+    {
+      name: 'Geoportal - Faixa de Domínio - Rodovias',
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/SISTEMA_VIARIO/MapServer/14'
+    },  
     {
       name: 'Geoportal - Lotes Registrados',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Aplicacoes/LOTES_REGISTRADOS/MapServer/0'
-    },    
+    },   
     {
       name: 'Geoportal¹ - Lotes Aprovados e Aguardando Registro',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
@@ -124,24 +128,42 @@ function App() {
   // Função para consultar um serviço específico
   // Faz uma requisição para o serviço e retorna os atributos da feição encontrada
   // Se o serviço exigir autenticação, obtém um token de autenticação
-  const queryService = async (serviceUrl: string, serviceName: string, x: number, y: number, protected_ = false, credentials?: { username: string; password: string }) => {
+  const queryService = async (
+    serviceUrl: string, 
+    serviceName: string, 
+    x: number, 
+    y: number, protected_ = false, 
+    credentials?: { username: string; password: string }) => {
+
+    // Define a tolerância de 3 metros no sistema de coordenadas EPSG:31983
+    const tolerance = 3; // metros
+    
+    // Cria uma geometria de envelope (retângulo) ao redor do ponto
+    const envelope = {
+      xmin: x - tolerance,
+      ymin: y - tolerance,
+      xmax: x + tolerance,
+      ymax: y + tolerance,
+      spatialReference: { wkid: 31983 }
+    };
+
     const params = new URLSearchParams({
-      geometry: `${x},${y}`,
-      geometryType: 'esriGeometryPoint',
-      spatialRel: 'esriSpatialRelIntersects',
-      outFields: '*',
-      returnGeometry: 'false',
-      f: 'json'
+    geometry: JSON.stringify(envelope),
+    geometryType: 'esriGeometryEnvelope',
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: '*',
+    returnGeometry: 'false',
+    f: 'json'
     });
 
     if (protected_ && credentials) {
       params.append('token', await getToken(serviceUrl, credentials));
     }
-
+  
     const response = await fetch(`${serviceUrl}/query?${params}`);
-
+  
     const data = await response.json();
-
+  
     if (data.error) {
       throw new Error(data.error.message || 'Erro ao consultar o serviço');
     }
@@ -152,8 +174,9 @@ function App() {
       layerName: serviceName
     };
   };
+  
 
-  const getToken = async (serviceUrl: string, credentials: { username: string; password: string }) => {
+  async function getToken(serviceUrl: string, credentials: { username: string; password: string; }) {
     const tokenUrl = 'https://www.geoservicos.ide.df.gov.br/arcgis/tokens/generateToken';
     const params = new URLSearchParams({
       username: credentials.username,
@@ -178,38 +201,38 @@ function App() {
     }
 
     return data.token;
-  };
+  }
 
- // Função para lidar com a consulta ao clicar no botão
- const handleQuery = async () => {
-  setLoading(true);
-  setError(null);
-  setQueryResults([]);
-  setSelectedLayer(null);
+  // Função para lidar com a consulta ao clicar no botão
+  const handleQuery = async () => {
+    setLoading(true);
+    setError(null);
+    setQueryResults([]);
+    setSelectedLayer(null);
 
-  try {
-    const lat = parseFloat(coordinates.lat);
-    const lon = parseFloat(coordinates.lon);
+    try {
+      const lat = parseFloat(coordinates.lat);
+      const lon = parseFloat(coordinates.lon);
 
-    if (isNaN(lat) || isNaN(lon)) {
-      throw new Error('Coordenadas inválidas');
-    }
+      if (isNaN(lat) || isNaN(lon)) {
+        throw new Error('Coordenadas inválidas');
+      }
 
-    // Transformar de EPSG:4326 (lat/lon) para EPSG:31983 (x/y)
-    const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
+      // Transformar de EPSG:4326 (lat/lon) para EPSG:31983 (x/y)
+      const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
 
-    const results = await Promise.all(
-      services.map(service =>
-        queryService(
-          service.url,
-          service.name,
-          x,
-          y,
-          service.protected,
-          service.credentials
+      const results = await Promise.all(
+        services.map(service =>
+          queryService(
+            service.url,
+            service.name,
+            x,
+            y,
+            service.protected,
+            service.credentials
+          )
         )
-      )
-    );
+      );
 
       setQueryResults(results);
     } catch (err) {
@@ -264,185 +287,179 @@ function App() {
   // Exibe uma tabela com os atributos da feição
   const renderDetailedResults = () => {
     if (!selectedLayer) return null;
-
+  
     const result = queryResults.find(r => r.layerName === selectedLayer);
     if (!result?.attributes) return null;
-
+  
     const attributes = Object.entries(result.attributes)
       .filter(([key, value]) => value !== null && value !== undefined)
       .map(([key, value]) => ({
         label: key,
         value: value.toString()
       }));
-
-      return (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Análise da Localização</h2>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Camada</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Incidência</th>
-              </tr>
-            </thead>
-            <tbody>
-              {queryResults.map((result, index) => (
-                <tr key={index}>
-                  <td className="py-3 px-4 border-b">{result.layerName}</td>
-                  <td className="py-3 px-4 border-b">
-                    {result.hasIntersection ? (
-                      <button
-                        onClick={() => setSelectedLayer(result.layerName)}
-                        className="text-blue-600 hover:text-blue-800 underline focus:outline-none"
-                      >
-                        Sim (clique para ver detalhes)
-                      </button>
-                    ) : (
-                      'Não'
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    };
   
     return (
-      <div className="min-h-screen bg-gray-100">
-        {/* Header */}
-        <header className="bg-customBlue text-white py-4 shadow-md">
-  <div className="container mx-auto flex flex-col items-center px-4">
-    {/* Logotipo */}
-    <div className="mb-2">
-      <img
-        src="logos/icon.png" 
-        alt="Logo da Instituição"
-        className="h-16 w-auto" 
-      />
-    </div>
-
-    {/* Nome da Instituição */}
-    <h1 className="text-xl font-bold text-center">
-      SECRETARIA DE ESTADO DA PROTEÇÃO URBANÍSTICA DO DISTRITO FEDERAL - DF LEGAL
-    </h1>
-
-    {/* Botão do Menu Hambúrguer */}
-    <button
-      className="md:hidden text-white focus:outline-none mt-4"
-      onClick={() => setMenuOpen(!menuOpen)}
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-6 w-6"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M4 6h16M4 12h16m-7 6h7"
-        />
-      </svg>
-    </button>
-
-    {/* Links de Navegação */}
-    <nav
-      className={`${
-        menuOpen ? 'block' : 'hidden'
-      } md:flex flex-col md:flex-row gap-4 md:gap-6 items-center w-full md:w-auto mt-4`}
-    >
-      <a
-        href="https://www.dflegal.df.gov.br/"
-        className="block md:inline-block hover:underline text-white font-medium text-sm"
-      >
-        Página Inicial
-      </a>
-      <a
-        href="/sobre"
-        className="block md:inline-block hover:underline text-white font-medium text-sm"
-      >
-        Sobre
-      </a>
-      <a
-        href="/contato"
-        className="block md:inline-block hover:underline text-white font-medium text-sm"
-      >
-        Contato
-      </a>
-    </nav>
-  </div> 
-</header>
-  
-        {/* Conteúdo principal */}
-        <div className="p-8">
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
-      <h1 className="text-2xl font-bold text-gray-800 mb-4">
-        Insira as Coordenadas
-      </h1>
-
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Latitude (WGS84)
-          </label>
-          <input
-            type="text"
-            value={coordinates.lat}
-            onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ex: -15.7942"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Longitude (WGS84)
-          </label>
-          <input
-            type="text"
-            value={coordinates.lon}
-            onChange={(e) => setCoordinates(prev => ({ ...prev, lon: e.target.value }))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleQuery(); // Chama a função de consulta ao pressionar Enter
-              }
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Ex: -47.8822"
-          />
-        </div>
-      </div>
-      <div>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Feição</h2>
+        <table className="w-full border-collapse mb-4">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Atributo</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            {attributes.map((attr, index) => (
+              <tr key={index}>
+                <td className="py-3 px-4 border-b">{attr.label}</td>
+                <td className="py-3 px-4 border-b">{attr.value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
         <button
-          onClick={handleQuery}
-          disabled={loading}
-          className="w-full bg-customBlue text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
+          onClick={() => setSelectedLayer(null)}
+          className="bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
         >
-          {loading ? (
-            'Consultando...'
-          ) : (
-            <>
-              <Search size={20} />
-              Consultar
-            </>
-          )}
+          Voltar
         </button>
       </div>
-    </div>
-            {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-                <p className="text-red-700">{error}</p>
-              </div>
-            )}
-            {queryResults.length > 0 && !selectedLayer && renderInitialResults()}
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <header className="bg-customBlue text-white py-4 shadow-md">
+        <div className="container mx-auto flex flex-col items-center px-4">
+          <div className="mb-2">
+            <img
+              src="logos/icon.png" 
+              alt="Logo da Instituição"
+              className="h-16 w-auto" 
+            />
           </div>
+          <h1 className="text-xl font-bold text-center">
+            SECRETARIA DE ESTADO DA PROTEÇÃO URBANÍSTICA DO DISTRITO FEDERAL - DF LEGAL
+          </h1>
+          <button
+            className="md:hidden text-white focus:outline-none mt-4"
+            onClick={() => setMenuOpen(!menuOpen)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16m-7 6h7"
+              />
+            </svg>
+          </button>
+          <nav
+            className={`${
+              menuOpen ? 'block' : 'hidden'
+            } md:flex flex-col md:flex-row gap-4 md:gap-6 items-center w-full md:w-auto mt-4`}
+          >
+            <a
+              href="https://www.dflegal.df.gov.br/"
+              className="block md:inline-block hover:underline text-white font-medium text-sm"
+            >
+              Página Inicial
+            </a>
+            <a
+              href="/sobre"
+              className="block md:inline-block hover:underline text-white font-medium text-sm"
+            >
+              Sobre
+            </a>
+            <a
+              href="/contato"
+              className="block md:inline-block hover:underline text-white font-medium text-sm"
+            >
+              Contato
+            </a>
+          </nav>
+        </div> 
+      </header>
+      {/* Conteúdo principal */}
+      <div className="p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">
+              Insira as Coordenadas
+            </h1>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Latitude (WGS84)
+                </label>
+                <input
+                  type="text"
+                  value={coordinates.lat}
+                  onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: -15.7942"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Longitude (WGS84)
+                </label>
+                <input
+                  type="text"
+                  value={coordinates.lon}
+                  onChange={(e) => setCoordinates(prev => ({ ...prev, lon: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleQuery();
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ex: -47.8822"
+                />
+              </div>
+            </div>
+            <div>
+              <button
+                onClick={handleQuery}
+                disabled={loading}
+                className="w-full bg-customBlue text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  'Consultando...'
+                ) : (
+                  <>
+                    <Search size={20} />
+                    Consultar
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          {error && (
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
+          {/* Renderiza os resultados iniciais ou os detalhes */}
+          {selectedLayer ? renderDetailedResults() : renderInitialResults()}
         </div>
       </div>
-    );
-  }
-  
-  export default App;
+
+    {/* Rodapé */}
+    <footer className="bg-gray-200 text-gray-700 text-center py-4">
+      <p className="text-sm">
+        Nota: Existe uma tolerância de 3 metros do ponto informado para considerar interferências.
+      </p>
+    </footer>
+  </div>  
+  );
+}
+
+export default App;
