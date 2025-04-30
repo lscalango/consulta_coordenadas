@@ -264,21 +264,21 @@ function App() {
   // Exibe uma tabela com os atributos da feição
   const renderDetailedResults = () => {
     if (!selectedLayer) return null;
-
+  
     const result = queryResults.find(r => r.layerName === selectedLayer);
     if (!result?.attributes) return null;
-
+  
     const attributes = Object.entries(result.attributes)
       .filter(([key, value]) => value !== null && value !== undefined)
       .map(([key, value]) => ({
         label: key,
         value: value.toString()
       }));
-
+  
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Feição</h2>
-        <table className="w-full border-collapse">
+        <table className="w-full border-collapse mb-4">
           <thead>
             <tr className="bg-gray-50">
               <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Atributo</th>
@@ -294,6 +294,12 @@ function App() {
             ))}
           </tbody>
         </table>
+        <button
+          onClick={() => setSelectedLayer(null)}
+          className="bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+        >
+          Voltar
+        </button>
       </div>
     );
   };
