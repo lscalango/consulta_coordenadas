@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
+import proj4 from 'proj4';
+
+// Defina os sistemas de coordenadas EPSG:4326 e EPSG:31983
+proj4.defs([
+  [
+    'EPSG:4326',
+    '+proj=longlat +datum=WGS84 +no_defs'
+  ],
+  [
+    'EPSG:31983',
+    '+proj=utm +zone=23 +south +datum=WGS84 +units=m +no_defs'
+  ]
+]);
 
 // Interface para representar os atributos de uma feição retornada pela consulta
 interface FeatureAttributes {
@@ -14,10 +27,9 @@ interface QueryResult {
 }
 
 function App() {
-  // Estado para armazenar as coordenadas de entrada
   const [coordinates, setCoordinates] = useState({
-    x: '',
-    y: ''
+    lat: '', // Latitude (EPSG:4326)
+    lon: ''  // Longitude (EPSG:4326)
   });
   const [queryResults, setQueryResults] = useState<QueryResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +37,6 @@ function App() {
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
 
   // Lista de serviços a serem consultados
-  // Cada serviço tem um nome, uma URL e, opcionalmente, credenciais de autenticação
   const services = [
     {
       name: 'Geoportal - Area de Proteção de Manancial',
@@ -166,35 +177,36 @@ function App() {
     return data.token;
   };
 
-  // Função para lidar com a consulta ao clicar no botão
-  // Faz a validação das coordenadas e chama a função de consulta para cada serviço
-  // Atualiza o estado com os resultados da consulta
-  const handleQuery = async () => {
-    setLoading(true);
-    setError(null);
-    setQueryResults([]);
-    setSelectedLayer(null);
+ // Função para lidar com a consulta ao clicar no botão
+ const handleQuery = async () => {
+  setLoading(true);
+  setError(null);
+  setQueryResults([]);
+  setSelectedLayer(null);
 
-    try {
-      const x = parseFloat(coordinates.x);
-      const y = parseFloat(coordinates.y);
-      
-      if (isNaN(x) || isNaN(y)) {
-        throw new Error('Coordenadas inválidas');
-      }
+  try {
+    const lat = parseFloat(coordinates.lat);
+    const lon = parseFloat(coordinates.lon);
 
-      const results = await Promise.all(
-        services.map(service => 
-          queryService(
-            service.url, 
-            service.name, 
-            x, 
-            y, 
-            service.protected, 
-            service.credentials
-          )
+    if (isNaN(lat) || isNaN(lon)) {
+      throw new Error('Coordenadas inválidas');
+    }
+
+    // Transformar de EPSG:4326 (lat/lon) para EPSG:31983 (x/y)
+    const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
+
+    const results = await Promise.all(
+      services.map(service =>
+        queryService(
+          service.url,
+          service.name,
+          x,
+          y,
+          service.protected,
+          service.credentials
         )
-      );
+      )
+    );
 
       setQueryResults(results);
     } catch (err) {
@@ -298,30 +310,30 @@ function App() {
           <h1 className="text-2xl font-bold text-gray-800 mb-4">
             Consulta Localização - Pronto Emprego
           </h1>
-          
+
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Coordenada X
+                Latitude (WGS84)
               </label>
               <input
                 type="text"
-                value={coordinates.x}
-                onChange={(e) => setCoordinates(prev => ({ ...prev, x: e.target.value }))}
+                value={coordinates.lat}
+                onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ex: 202193"
+                placeholder="Ex: -15.7942"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Coordenada Y
+                Longitude (WGS84)
               </label>
               <input
                 type="text"
-                value={coordinates.y}
-                onChange={(e) => setCoordinates(prev => ({ ...prev, y: e.target.value }))}
+                value={coordinates.lon}
+                onChange={(e) => setCoordinates(prev => ({ ...prev, lon: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Ex: 8257253"
+                placeholder="Ex: -47.8822"
               />
             </div>
           </div>
