@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import proj4 from 'proj4';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 
 // Defina os sistemas de coordenadas EPSG:4326 e EPSG:31983
 proj4.defs([
@@ -287,20 +288,64 @@ function App() {
   // Exibe uma tabela com os atributos da feição
   const renderDetailedResults = () => {
     if (!selectedLayer) return null;
-  
+
     const result = queryResults.find(r => r.layerName === selectedLayer);
     if (!result?.attributes) return null;
-  
+
     const attributes = Object.entries(result.attributes)
       .filter(([key, value]) => value !== null && value !== undefined)
       .map(([key, value]) => ({
         label: key,
         value: value.toString()
       }));
-  
+
+    // Coordenadas do ponto central (exemplo: use as coordenadas do resultado)
+    const center = [coordinates.lat, coordinates.lon];
+
     return (
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Feição</h2>
+
+        {/* Adicionando o mapa */}
+        <div className="mb-4">
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '800px',
+              height: '0',
+              paddingBottom: '75%', // Proporção 4:3
+              margin: '0 auto',
+              position: 'relative',
+              border: '1px solid #ccc',
+              borderRadius: '8px',
+              overflow: 'hidden'
+            }}
+          >
+            <MapContainer
+              center={center}
+              zoom={15}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%'
+              }}
+            >
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+              <Marker position={center}>
+                <Popup>
+                  {selectedLayer}
+                </Popup>
+              </Marker>
+            </MapContainer>
+          </div>
+        </div>
+
+        {/* Tabela de atributos */}
         <table className="w-full border-collapse mb-4">
           <thead>
             <tr className="bg-gray-50">
@@ -317,6 +362,7 @@ function App() {
             ))}
           </tbody>
         </table>
+
         <button
           onClick={() => setSelectedLayer(null)}
           className="bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
