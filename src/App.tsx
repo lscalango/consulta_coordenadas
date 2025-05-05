@@ -1,45 +1,32 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
-import proj4 from 'proj4';
-
-// Defina os sistemas de coordenadas EPSG:4326 e EPSG:31983
-proj4.defs([
-  [
-    'EPSG:4326',
-    '+proj=longlat +datum=WGS84 +no_defs'
-  ],
-  [
-    'EPSG:31983',
-    '+proj=utm +zone=23 +south +datum=WGS84 +units=m +no_defs'
-  ]
-]);
-
-// Interface para representar os atributos de uma feição retornada pela consulta
-interface FeatureAttributes {
-  [key: string]: any;
-}
-
-// e para o resultado da consulta
-interface QueryResult {
-  attributes: FeatureAttributes | null;
-  hasIntersection: boolean;
-  layerName: string;
-}
+import proj4 from './utils/proj4Config';
+import { queryService } from './utils/queryService';
+import Header from './components/Header';
+import Footer from './components/Footer';
+import ResultsTable from './components/ResultsTable';
+import DetailedResults from './components/DetailedResults';
 
 function App() {
-  const [coordinates, setCoordinates] = useState({
-    lat: '', // Latitude (EPSG:4326)
-    lon: ''  // Longitude (EPSG:4326)
-  });
-  const [queryResults, setQueryResults] = useState<QueryResult[]>([]);
+  // Estado para armazenar as coordenadas inseridas pelo usuário
+  const [coordinates, setCoordinates] = useState({ lat: '', lon: '' });
+
+  // Estado para armazenar os resultados das consultas
+  const [queryResults, setQueryResults] = useState<{ attributes: any; hasIntersection: boolean; layerName: string; }[]>([]);
+
+  // Estado para armazenar mensagens de erro
   const [error, setError] = useState<string | null>(null);
+
+  // Estado para indicar se a consulta está em andamento
   const [loading, setLoading] = useState(false);
+
+  // Estado para armazenar a camada selecionada para exibição de detalhes
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
 
-  // Estado para o menu hambúrguer
+  // Estado para controlar a abertura do menu no cabeçalho
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Lista de serviços a serem consultados
+  // Lista de serviços de mapas a serem consultados
   const services = [
     {
       name: 'Geoportal - Area de Proteção de Manancial',
@@ -52,7 +39,7 @@ function App() {
     {
       name: 'Geoportal - Area Rural com Proteção Ambiental',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/27'
-    }, 
+    },
     {
       name: 'Geportal - Diretrizes Urbanísticas Específicas',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/DIRETRIZES_URBANISTICAS/MapServer/4'
@@ -60,11 +47,11 @@ function App() {
     {
       name: 'Geoportal - Faixa de Domínio - Rodovias',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/SISTEMA_VIARIO/MapServer/14'
-    },  
+    },
     {
       name: 'Geoportal - Lotes Registrados',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Aplicacoes/LOTES_REGISTRADOS/MapServer/0'
-    },   
+    },
     {
       name: 'Geoportal¹ - Lotes Aprovados e Aguardando Registro',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
@@ -103,14 +90,14 @@ function App() {
       name: 'Sisdia - App - Lagos e Lagoas Naturais',
       url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/2'
     },
-     {
+    {
       name: 'Sisdia - App - Nascentes',
       url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/3'
     },
-     {
+    {
       name: 'Sisdia - App - Reservatórios',
       url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/4'
-    }, 
+    },
     {
       name: 'Sisdia - Área de Relevante Interesse Ecológico',
       url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Area_de_Relevante_lnteresse_Ecologico/MapServer/0'
@@ -118,109 +105,34 @@ function App() {
     {
       name: 'Sisdia - Parques Ecológicos',
       url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parques_Ecol%C3%B3gicos/MapServer/0'
-    }, 
+    },
     {
       name: 'Sisdia - Parque Nacional',
       url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parque_Nacional/MapServer/0'
     }
   ];
 
-  // Função para consultar um serviço específico
-  // Faz uma requisição para o serviço e retorna os atributos da feição encontrada
-  // Se o serviço exigir autenticação, obtém um token de autenticação
-  const queryService = async (
-    serviceUrl: string, 
-    serviceName: string, 
-    x: number, 
-    y: number, protected_ = false, 
-    credentials?: { username: string; password: string }) => {
-
-    // Define a tolerância de 3 metros no sistema de coordenadas EPSG:31983
-    const tolerance = 3; // metros
-    
-    // Cria uma geometria de envelope (retângulo) ao redor do ponto
-    const envelope = {
-      xmin: x - tolerance,
-      ymin: y - tolerance,
-      xmax: x + tolerance,
-      ymax: y + tolerance,
-      spatialReference: { wkid: 31983 }
-    };
-
-    const params = new URLSearchParams({
-    geometry: JSON.stringify(envelope),
-    geometryType: 'esriGeometryEnvelope',
-    spatialRel: 'esriSpatialRelIntersects',
-    outFields: '*',
-    returnGeometry: 'false',
-    f: 'json'
-    });
-
-    if (protected_ && credentials) {
-      params.append('token', await getToken(serviceUrl, credentials));
-    }
-  
-    const response = await fetch(`${serviceUrl}/query?${params}`);
-  
-    const data = await response.json();
-  
-    if (data.error) {
-      throw new Error(data.error.message || 'Erro ao consultar o serviço');
-    }
-
-    return {
-      attributes: data.features?.[0]?.attributes || null,
-      hasIntersection: data.features?.length > 0,
-      layerName: serviceName
-    };
-  };
-  
-
-  async function getToken(serviceUrl: string, credentials: { username: string; password: string; }) {
-    const tokenUrl = 'https://www.geoservicos.ide.df.gov.br/arcgis/tokens/generateToken';
-    const params = new URLSearchParams({
-      username: credentials.username,
-      password: credentials.password,
-      client: 'referer',
-      referer: window.location.origin,
-      expiration: '60',
-      f: 'json'
-    });
-
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params
-    });
-
-    const data = await response.json();
-    if (data.error) {
-      throw new Error('Erro ao obter token de autenticação');
-    }
-
-    return data.token;
-  }
-
-  // Função para lidar com a consulta ao clicar no botão
+  // Função para realizar a consulta aos serviços de mapas
   const handleQuery = async () => {
-    setLoading(true);
-    setError(null);
-    setQueryResults([]);
-    setSelectedLayer(null);
+    setLoading(true); // Indica que a consulta está em andamento
+    setError(null); // Limpa mensagens de erro anteriores
+    setQueryResults([]); // Limpa os resultados anteriores
+    setSelectedLayer(null); // Reseta a camada selecionada
 
     try {
+      // Converte as coordenadas inseridas para números
       const lat = parseFloat(coordinates.lat);
       const lon = parseFloat(coordinates.lon);
 
+      // Verifica se as coordenadas são válidas
       if (isNaN(lat) || isNaN(lon)) {
         throw new Error('Coordenadas inválidas');
       }
 
-      // Transformar de EPSG:4326 (lat/lon) para EPSG:31983 (x/y)
+      // Transforma as coordenadas de EPSG:4326 (lat/lon) para EPSG:31983 (x/y)
       const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
 
+      // Realiza consultas paralelas a todos os serviços
       const results = await Promise.all(
         services.map(service =>
           queryService(
@@ -234,171 +146,30 @@ function App() {
         )
       );
 
-      setQueryResults(results);
+      setQueryResults(results); // Armazena os resultados das consultas
     } catch (err) {
+      // Define a mensagem de erro caso a consulta falhe
       setError(err instanceof Error ? err.message : 'Erro ao realizar consulta');
-      setQueryResults([]);
+      setQueryResults([]); // Limpa os resultados em caso de erro
     } finally {
-      setLoading(false);
+      setLoading(false); // Indica que a consulta foi concluída
     }
   };
 
-  // Renderiza os resultados iniciais da consulta
-  // Exibe uma tabela com as camadas consultadas e se houve interseção
-  // Se houver interseção, exibe um botão para ver os detalhes
-  const renderInitialResults = () => {
-    if (queryResults.length === 0) return null;
-
-    return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Análise da Localização</h2>
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Camada</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Incidência</th>
-            </tr>
-          </thead>
-          <tbody>
-            {queryResults.map((result, index) => (
-              <tr key={index}>
-                <td className="py-3 px-4 border-b">{result.layerName}</td>
-                <td className="py-3 px-4 border-b">
-                  {result.hasIntersection ? (
-                    <button
-                      onClick={() => setSelectedLayer(result.layerName)}
-                      className="text-blue-600 hover:text-blue-800 underline focus:outline-none"
-                    >
-                      Sim (clique para ver detalhes)
-                    </button>
-                  ) : (
-                    'Não'
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  };
-
-  // Renderiza os detalhes da feição selecionada
-  // Exibe uma tabela com os atributos da feição
-  const renderDetailedResults = () => {
-    if (!selectedLayer) return null;
-  
-    const result = queryResults.find(r => r.layerName === selectedLayer);
-    if (!result?.attributes) return null;
-  
-    const attributes = Object.entries(result.attributes)
-      .filter(([key, value]) => value !== null && value !== undefined)
-      .map(([key, value]) => ({
-        label: key,
-        value: value.toString()
-      }));
-  
-    return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Feição</h2>
-        <table className="w-full border-collapse mb-4">
-          <thead>
-            <tr className="bg-gray-50">
-              <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Atributo</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {attributes.map((attr, index) => (
-              <tr key={index}>
-                <td className="py-3 px-4 border-b">{attr.label}</td>
-                <td className="py-3 px-4 border-b">{attr.value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <button
-          onClick={() => setSelectedLayer(null)}
-          className="bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
-        >
-          Voltar
-        </button>
-      </div>
-    );
-  };
-
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-customBlue text-white py-4 shadow-md">
-        <div className="container mx-auto flex flex-col items-center px-4">
-          <div className="mb-2">
-            <img
-              src="logos/icon.png" 
-              alt="Logo da Instituição"
-              className="h-16 w-auto" 
-            />
-          </div>
-          <h1 className="text-xl font-bold text-center">
-            SECRETARIA DE ESTADO DA PROTEÇÃO URBANÍSTICA DO DISTRITO FEDERAL - DF LEGAL
-          </h1>
-          <button
-            className="md:hidden text-white focus:outline-none mt-4"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16m-7 6h7"
-              />
-            </svg>
-          </button>
-          <nav
-            className={`${
-              menuOpen ? 'block' : 'hidden'
-            } md:flex flex-col md:flex-row gap-4 md:gap-6 items-center w-full md:w-auto mt-4`}
-          >
-            <a
-              href="https://www.dflegal.df.gov.br/"
-              className="block md:inline-block hover:underline text-white font-medium text-sm"
-            >
-              Página Inicial
-            </a>
-            <a
-              href="/sobre"
-              className="block md:inline-block hover:underline text-white font-medium text-sm"
-            >
-              Sobre
-            </a>
-            <a
-              href="/contato"
-              className="block md:inline-block hover:underline text-white font-medium text-sm"
-            >
-              Contato
-            </a>
-          </nav>
-        </div> 
-      </header>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Cabeçalho da aplicação */}
+      <Header menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
+
       {/* Conteúdo principal */}
-      <div className="p-8">
+      <div className="p-8 flex-grow">
         <div className="max-w-2xl mx-auto">
+          {/* Formulário para inserção de coordenadas */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">
-              Insira as Coordenadas
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Insira as Coordenadas</h1>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Latitude (WGS84)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Latitude (WGS84)</label>
                 <input
                   type="text"
                   value={coordinates.lat}
@@ -408,16 +179,14 @@ function App() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Longitude (WGS84)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Longitude (WGS84)</label>
                 <input
                   type="text"
                   value={coordinates.lon}
                   onChange={(e) => setCoordinates(prev => ({ ...prev, lon: e.target.value }))}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      handleQuery();
+                      handleQuery(); // Realiza a consulta ao pressionar Enter
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -425,40 +194,35 @@ function App() {
                 />
               </div>
             </div>
-            <div>
-              <button
-                onClick={handleQuery}
-                disabled={loading}
-                className="w-full bg-customBlue text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  'Consultando...'
-                ) : (
-                  <>
-                    <Search size={20} />
-                    Consultar
-                  </>
-                )}
-              </button>
-            </div>
+            <button
+              onClick={handleQuery} // Realiza a consulta ao clicar no botão
+              disabled={loading} // Desabilita o botão enquanto a consulta está em andamento
+              className="w-full bg-customBlue text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? 'Consultando...' : <><Search size={20} /> Consultar</>}
+            </button>
           </div>
-          {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-              <p className="text-red-700">{error}</p>
-            </div>
+
+          {/* Exibe mensagens de erro, se houver */}
+          {error && <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6"><p className="text-red-700">{error}</p></div>}
+
+          {/* Exibe os resultados ou os detalhes da camada selecionada */}
+          {selectedLayer ? (
+            <DetailedResults
+              selectedLayer={selectedLayer}
+              setSelectedLayer={setSelectedLayer}
+              queryResults={queryResults}
+              coordinates={coordinates}
+            />
+          ) : (
+            <ResultsTable queryResults={queryResults} setSelectedLayer={setSelectedLayer} />
           )}
-          {/* Renderiza os resultados iniciais ou os detalhes */}
-          {selectedLayer ? renderDetailedResults() : renderInitialResults()}
         </div>
       </div>
 
-    {/* Rodapé */}
-    <footer className="bg-gray-200 text-gray-700 text-center py-4">
-      <p className="text-sm">
-        Nota: Existe uma tolerância de 3 metros do ponto informado para considerar interferências.
-      </p>
-    </footer>
-  </div>  
+      {/* Rodapé da aplicação */}
+      <Footer />
+    </div>
   );
 }
 
