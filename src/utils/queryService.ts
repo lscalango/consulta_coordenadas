@@ -9,13 +9,43 @@ export const queryService = async (
   x: number, // Coordenada X (em EPSG:31983)
   y: number, // Coordenada Y (em EPSG:31983)
   protected_ = false, // Indica se o serviço é protegido e requer autenticação
-  credentials?: { username: string; password: string } // Credenciais para serviços protegidos
+  credentials?: { username: string; password: string }, // Credenciais para serviços protegidos
+  type: string = 'arcgis' // Adicione um parâmetro para identificar o tipo do serviço
 ) => {
-  // Define a tolerância de 3 metros no sistema de coordenadas EPSG:31983
+  if (type === 'wms') {
+    // Lógica para consultar serviços WMS
+    const params = new URLSearchParams({
+      service: 'WMS',
+      request: 'GetFeatureInfo',
+      version: '1.3.0',
+      layers: '0', // Substitua pelo nome da camada, se necessário
+      query_layers: '0', // Substitua pelo nome da camada, se necessário
+      info_format: 'application/json',
+      i: '50', // Coordenada X do clique no mapa (ajuste conforme necessário)
+      j: '50', // Coordenada Y do clique no mapa (ajuste conforme necessário)
+      crs: 'EPSG:31983',
+      bbox: `${x - 3},${y - 3},${x + 3},${y + 3}`, // Define a área de consulta
+      width: '101', // Largura do mapa em pixels
+      height: '101', // Altura do mapa em pixels
+    });
+
+    const response = await fetch(`${serviceUrl}?${params.toString()}`);
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.message || 'Erro ao consultar o serviço WMS');
+    }
+
+    return {
+      attributes: data.features?.[0]?.properties || null,
+      hasIntersection: data.features?.length > 0,
+      layerName: serviceName,
+    };
+  }
+
+  // Lógica existente para serviços ArcGIS
   const tolerance = 3; // metros
 
-  // Cria uma geometria de envelope (retângulo) ao redor do ponto
-  // O envelope é usado para definir a área de consulta
   const envelope = {
     xmin: x - tolerance, // Coordenada mínima X
     ymin: y - tolerance, // Coordenada mínima Y
@@ -24,7 +54,6 @@ export const queryService = async (
     spatialReference: { wkid: 31983 } // Sistema de coordenadas EPSG:31983
   };
 
-  // Parâmetros da consulta ao serviço
   const params = new URLSearchParams({
     geometry: JSON.stringify(envelope), // Geometria da área de consulta (envelope)
     geometryType: 'esriGeometryEnvelope', // Tipo de geometria (envelope)
@@ -34,26 +63,20 @@ export const queryService = async (
     f: 'json' // Formato da resposta (JSON)
   });
 
-  // Adiciona o token de autenticação se o serviço for protegido
   if (protected_ && credentials) {
     params.append('token', await getToken(serviceUrl, credentials));
   }
 
-  // Realiza a solicitação ao serviço de mapas
-  const response = await fetch(`${serviceUrl}/query?${params}`);
-
-  // Converte a resposta para JSON
+  const response = await fetch(`${serviceUrl}/query?${params.toString()}`);
   const data = await response.json();
 
-  // Verifica se houve erro na consulta
   if (data.error) {
-    throw new Error(data.error.message || 'Erro ao consultar o serviço'); // Lança um erro caso a consulta falhe
+    throw new Error(data.error.message || 'Erro ao consultar o serviço');
   }
 
-  // Retorna os resultados da consulta
   return {
-    attributes: data.features?.[0]?.attributes || null, // Atributos da primeira feição encontrada (se houver)
-    hasIntersection: data.features?.length > 0, // Indica se houve interseção com a área de consulta
-    layerName: serviceName // Nome da camada consultada
+    attributes: data.features?.[0]?.attributes || null,
+    hasIntersection: data.features?.length > 0,
+    layerName: serviceName
   };
 };
