@@ -42,7 +42,7 @@ const DetailedResults: React.FC<DetailedResultsProps> = ({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       {/* Título da seção */}
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Feição</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Camada</h2>
 
       {/* Mapa interativo exibindo a localização */}
       <div className="mb-4">
