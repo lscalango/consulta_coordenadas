@@ -45,10 +45,9 @@ const DetailedResults: React.FC<DetailedResultsProps> = ({
 
       {/* Mapa interativo exibindo a localização */}
       <div className="mb-4">
-        <MapContainer center={center} zoom={15} style={{ height: '300px', width: '100%' }}>
+        <MapContainer zoom={15} style={{ height: '300px', width: '100%' }} whenCreated={(map: L.Map) => map.setView(center)} attributionControl={true}>
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           <Marker position={center}>
             <Popup>{selectedLayer}</Popup>
