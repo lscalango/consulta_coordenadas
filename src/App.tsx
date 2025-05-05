@@ -22,8 +22,6 @@ function App() {
 
   const [loadingCount, setLoadingCount] = useState(0); // Número de serviços em consulta
 
-  const [currentService, setCurrentService] = useState<string | null>(null); // Nome da camada em consulta
-
   // Estado para armazenar a camada selecionada para exibição de detalhes
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
 
@@ -125,10 +123,6 @@ function App() {
     {
       name: 'Sisdia - Parque Nacional',
       url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parque_Nacional/MapServer/0'
-    },
-    {
-      name: 'Sisdia - Parques Ecológicos',
-      url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parques_Ecol%C3%B3gicos/MapServer/0'
     }
   ];
 
@@ -139,7 +133,6 @@ function App() {
     setQueryResults([]); // Limpa os resultados anteriores
     setSelectedLayer(null); // Reseta a camada selecionada
     setLoadingCount(services.length); // Define o número total de serviços a serem consultados
-    setCurrentService(null); // Reseta o nome do serviço atual
 
     try {
       const lat = parseFloat(coordinates.lat);
@@ -151,31 +144,30 @@ function App() {
 
       const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
 
-      const results = [];
-      for (const service of services) {
-        try {
-          setCurrentService(service.name); // Atualiza o nome da camada em consulta
-          const result = await queryService(
-            service.url,
-            service.name,
-            x,
-            y,
-            service.protected,
-            service.credentials
-          );
-          results.push(result); // Adiciona o resultado ao array
-        } finally {
-          setLoadingCount((prev) => prev - 1); // Decrementa o contador após cada consulta
-        }
-      }
+      const results = await Promise.all(
+        services.map(async (service) => {
+          try {
+            const result = await queryService(
+              service.url,
+              service.name,
+              x,
+              y,
+              service.protected,
+              service.credentials
+            );
+            return result;
+          } finally {
+            setLoadingCount((prev) => prev - 1); // Decrementa o contador após cada consulta
+          }
+        })
+      );
 
-      setQueryResults(results); // Armazena todos os resultados
+      setQueryResults(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao realizar consulta');
       setQueryResults([]);
     } finally {
       setLoading(false); // Indica que a consulta foi concluída
-      setCurrentService(null); // Limpa o nome do serviço atual
     }
   };
 
@@ -200,7 +192,7 @@ function App() {
                   value={coordinates.lat}
                   onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: -15.840457"
+                  placeholder="Ex: -15.7942"
                 />
               </div>
               <div>
@@ -215,7 +207,7 @@ function App() {
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: -48.067367"
+                  placeholder="Ex: -47.8822"
                 />
               </div>
             </div>
@@ -229,16 +221,11 @@ function App() {
 
             {/* Spinner abaixo do botão */}
             {loadingCount > 0 && (
-              <div className="flex flex-col items-center justify-center mt-4">
+              <div className="flex items-center justify-center mt-4">
                 <div className="loader border-t-4 border-blue-500 rounded-full w-8 h-8 animate-spin"></div>
                 <span className="ml-2 text-gray-700">
                   Consultando serviços... ({services.length - loadingCount}/{services.length})
                 </span>
-                {currentService && (
-                  <span className="text-sm text-gray-500 mt-2">
-                    Consultando: <strong>{currentService}</strong>
-                  </span>
-                )}
               </div>
             )}
           </div>
