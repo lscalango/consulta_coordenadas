@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { Map } from 'leaflet';
 
 // Define as propriedades esperadas pelo componente DetailedResults
 interface DetailedResultsProps {
@@ -36,19 +37,23 @@ const DetailedResults: React.FC<DetailedResultsProps> = ({
     }));
 
   // Define o centro do mapa com base nas coordenadas fornecidas
-  const center = [parseFloat(coordinates.lat), parseFloat(coordinates.lon)];
+  const center: [number, number] = [parseFloat(coordinates.lat), parseFloat(coordinates.lon)];
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       {/* Título da seção */}
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Feição</h2>
+      <h2 className="text-xl font-semibold text-gray-800 mb-4">Detalhes da Camada</h2>
 
       {/* Mapa interativo exibindo a localização */}
       <div className="mb-4">
-        <MapContainer center={center} zoom={15} style={{ height: '300px', width: '100%' }}>
+        <MapContainer
+          zoom={15}
+          style={{ height: '300px', width: '100%' }}
+          center={center} // Set the center directly using the center prop
+          attributionControl={true}
+        >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           <Marker position={center}>
             <Popup>{selectedLayer}</Popup>

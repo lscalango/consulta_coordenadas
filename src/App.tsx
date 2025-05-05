@@ -20,6 +20,8 @@ function App() {
   // Estado para indicar se a consulta está em andamento
   const [loading, setLoading] = useState(false);
 
+  const [loadingCount, setLoadingCount] = useState(0); // Número de serviços em consulta
+
   // Estado para armazenar a camada selecionada para exibição de detalhes
   const [selectedLayer, setSelectedLayer] = useState<string | null>(null);
 
@@ -29,15 +31,27 @@ function App() {
   // Lista de serviços de mapas a serem consultados
   const services = [
     {
-      name: 'Geoportal - Area de Proteção de Manancial',
+      name: 'DF Legal - Relatório de Monitoramento',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
     },
     {
-      name: 'Geoportal - Area de Interesse Ambiental',
+      name: 'DF Legal - Área de Monitoramento Prioritário',
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
+    },
+    {
+      name: 'DF Legal - Área em Processo de Urbanização',
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
+    },
+    {
+      name: 'PDOT - Area de Proteção de Manancial',
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
+    },
+    {
+      name: 'PDOT - Area de Interesse Ambiental',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/3'
     },
     {
-      name: 'Geoportal - Area Rural com Proteção Ambiental',
+      name: 'PDOT - Area Rural com Proteção Ambiental',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/27'
     },
     {
@@ -75,7 +89,7 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/LUOS/MapServer/11'
     },
     {
-      name: 'Geoportal - Macrozona - PDOT 2012',
+      name: 'PDOT - Macrozona - PDOT 2012',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/4'
     },
     {
@@ -118,39 +132,40 @@ function App() {
     setError(null); // Limpa mensagens de erro anteriores
     setQueryResults([]); // Limpa os resultados anteriores
     setSelectedLayer(null); // Reseta a camada selecionada
+    setLoadingCount(services.length); // Define o número total de serviços a serem consultados
 
     try {
-      // Converte as coordenadas inseridas para números
       const lat = parseFloat(coordinates.lat);
       const lon = parseFloat(coordinates.lon);
 
-      // Verifica se as coordenadas são válidas
       if (isNaN(lat) || isNaN(lon)) {
         throw new Error('Coordenadas inválidas');
       }
 
-      // Transforma as coordenadas de EPSG:4326 (lat/lon) para EPSG:31983 (x/y)
       const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
 
-      // Realiza consultas paralelas a todos os serviços
       const results = await Promise.all(
-        services.map(service =>
-          queryService(
-            service.url,
-            service.name,
-            x,
-            y,
-            service.protected,
-            service.credentials
-          )
-        )
+        services.map(async (service) => {
+          try {
+            const result = await queryService(
+              service.url,
+              service.name,
+              x,
+              y,
+              service.protected,
+              service.credentials
+            );
+            return result;
+          } finally {
+            setLoadingCount((prev) => prev - 1); // Decrementa o contador após cada consulta
+          }
+        })
       );
 
-      setQueryResults(results); // Armazena os resultados das consultas
+      setQueryResults(results);
     } catch (err) {
-      // Define a mensagem de erro caso a consulta falhe
       setError(err instanceof Error ? err.message : 'Erro ao realizar consulta');
-      setQueryResults([]); // Limpa os resultados em caso de erro
+      setQueryResults([]);
     } finally {
       setLoading(false); // Indica que a consulta foi concluída
     }
@@ -164,6 +179,8 @@ function App() {
       {/* Conteúdo principal */}
       <div className="p-8 flex-grow">
         <div className="max-w-2xl mx-auto">
+          
+
           {/* Formulário para inserção de coordenadas */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
             <h1 className="text-2xl font-bold text-gray-800 mb-4">Insira as Coordenadas</h1>
@@ -201,6 +218,16 @@ function App() {
             >
               {loading ? 'Consultando...' : <><Search size={20} /> Consultar</>}
             </button>
+
+            {/* Spinner abaixo do botão */}
+            {loadingCount > 0 && (
+              <div className="flex items-center justify-center mt-4">
+                <div className="loader border-t-4 border-blue-500 rounded-full w-8 h-8 animate-spin"></div>
+                <span className="ml-2 text-gray-700">
+                  Consultando serviços... ({services.length - loadingCount}/{services.length})
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Exibe mensagens de erro, se houver */}
