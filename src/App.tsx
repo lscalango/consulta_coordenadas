@@ -55,6 +55,10 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/27'
     },
     {
+      name: 'PDOT - Macrozona - PDOT 2012',
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/4'
+    },
+    {
       name: 'Geportal - Diretrizes Urbanísticas Específicas',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/DIRETRIZES_URBANISTICAS/MapServer/4'
     },
@@ -87,10 +91,6 @@ function App() {
     {
       name: 'Geoportal - Lotes Lei de Uso e Ocupação do Solo',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/LUOS/MapServer/11'
-    },
-    {
-      name: 'PDOT - Macrozona - PDOT 2012',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/4'
     },
     {
       name: 'Sisdia - App - Borda de Chapada',
@@ -192,7 +192,7 @@ function App() {
                   value={coordinates.lat}
                   onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: -15.7942"
+                  placeholder="Ex: -15.929019"
                 />
               </div>
               <div>
@@ -207,7 +207,7 @@ function App() {
                     }
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: -47.8822"
+                  placeholder="Ex: -47.097165"
                 />
               </div>
             </div>
