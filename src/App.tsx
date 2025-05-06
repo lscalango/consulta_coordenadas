@@ -193,9 +193,9 @@ function App() {
 
           {/* Formulário para inserção de coordenadas */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">Insira as Coordenadas</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Consulta Camadas para Análise de Interferência</h1>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Coordenadas (WGS84)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Insira as Coordenadas (WGS84)</label>
               <input
                 type="text"
                 value={`${coordinates.lat}${coordinates.lon ? `, ${coordinates.lon}` : ''}`}
