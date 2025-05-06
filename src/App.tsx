@@ -7,6 +7,36 @@ import Footer from './components/Footer';
 import ResultsTable from './components/ResultsTable';
 import DetailedResults from './components/DetailedResults';
 
+const getArcGISToken = async (username: string, password: string, portalUrl: string) => {
+  const tokenUrl = `${portalUrl}/sharing/rest/generateToken`;
+
+  const params = new URLSearchParams({
+    username,
+    password,
+    referer: 'https://terrageo2.terracap.df.gov.br', // Referer autorizado
+    client: 'requestip', // Parâmetro obrigatório
+    expiration: '60', // Tempo de expiração do token em minutos
+    f: 'json', // Formato da resposta
+  });
+
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  const data = await response.json();
+
+  console.log('Resposta do servidor ao gerar token:', data);
+
+  if (data.error) {
+    console.error('Erro ao obter token:', data.error);
+    throw new Error(`Erro ao obter token: ${data.error.message}`);
+  }
+
+  return data.token;
+};
+
 function App() {
   // Estado para armazenar as coordenadas inseridas pelo usuário
   const [coordinates, setCoordinates] = useState({ lat: '', lon: '' });
@@ -126,17 +156,26 @@ function App() {
     {
       name: 'Sisdia - Parque Nacional',
       url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parque_Nacional/MapServer/0'
-    }
+    },
+    {
+      name: 'Terrageo - Fundiário - Imóveis Rurais',
+      url: 'https://terrageo2.terracap.df.gov.br/arcgis/rest/services/ImoveisRurais/Fundiario1/MapServer/0',
+      protected: true,
+      credentials: {
+        username: '02385173654',
+        password: '#1828Tr4',
+      },
+    },
   ];
 
   // Função para realizar a consulta aos serviços de mapas
   const handleQuery = async () => {
-    setLoading(true); // Indica que a consulta está em andamento
-    setError(null); // Limpa mensagens de erro anteriores
-    setQueryResults([]); // Limpa os resultados anteriores
-    setSelectedLayer(null); // Reseta a camada selecionada
-    setLoadingCount(services.length); // Define o número total de serviços a serem consultados
-    setCurrentService(null); // Reseta o nome do serviço atual
+    setLoading(true);
+    setError(null);
+    setQueryResults([]);
+    setSelectedLayer(null);
+    setLoadingCount(services.length);
+    setCurrentService(null);
   
     try {
       const lat = parseFloat(coordinates.lat);
@@ -146,38 +185,58 @@ function App() {
         throw new Error('Coordenadas inválidas');
       }
   
-      if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) {
-        setError('Por favor, insira coordenadas válidas no formato "-15.886986, -47.984292".');
-        return;
-      }
-  
       const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
   
       const results = [];
       for (const service of services) {
         try {
-          setCurrentService(service.name); // Atualiza o nome da camada em consulta
+          setCurrentService(service.name);
+  
+          let token = null;
+  
+          if (service.name.includes('Terrageo') && service.protected && service.credentials) {
+            console.log('Obtendo token para o serviço:', service.name);
+          
+            token = await getArcGISToken(
+              service.credentials.username,
+              service.credentials.password,
+              'https://terrageo2.terracap.df.gov.br/portal'
+            );
+          
+            console.log('Token obtido:', token);
+            console.log('Token gerado:', token);
+          }
+          
+          // Construir a URL com o token, se necessário
+          const urlWithToken = token
+            ? `${service.url}${service.url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+            : service.url;
+          
+          console.log('URL com token:', urlWithToken);
+          console.log('URL gerada para consulta:', urlWithToken);
+          
           const result = await queryService(
-            service.url,
+            urlWithToken,
             service.name,
             x,
             y,
             service.protected,
             service.credentials
           );
-          results.push(result); // Adiciona o resultado ao array
+  
+          results.push(result);
         } finally {
-          setLoadingCount((prev) => prev - 1); // Decrementa o contador após cada consulta
+          setLoadingCount((prev) => prev - 1);
         }
       }
   
-      setQueryResults(results); // Armazena todos os resultados
+      setQueryResults(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao realizar consulta');
       setQueryResults([]);
     } finally {
-      setLoading(false); // Indica que a consulta foi concluída
-      setCurrentService(null); // Limpa o nome do serviço atual
+      setLoading(false);
+      setCurrentService(null);
     }
   };
 
