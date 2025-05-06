@@ -146,6 +146,11 @@ function App() {
         throw new Error('Coordenadas inválidas');
       }
   
+      if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) {
+        setError('Por favor, insira coordenadas válidas no formato "-15.886986, -47.984292".');
+        return;
+      }
+  
       const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
   
       const results = [];
@@ -189,32 +194,23 @@ function App() {
           {/* Formulário para inserção de coordenadas */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
             <h1 className="text-2xl font-bold text-gray-800 mb-4">Insira as Coordenadas</h1>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Latitude (WGS84)</label>
-                <input
-                  type="text"
-                  value={coordinates.lat}
-                  onChange={(e) => setCoordinates(prev => ({ ...prev, lat: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: -15.929019"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Longitude (WGS84)</label>
-                <input
-                  type="text"
-                  value={coordinates.lon}
-                  onChange={(e) => setCoordinates(prev => ({ ...prev, lon: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleQuery(); // Realiza a consulta ao pressionar Enter
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ex: -48.097165"
-                />
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Coordenadas (WGS84)</label>
+              <input
+                type="text"
+                value={`${coordinates.lat}${coordinates.lon ? `, ${coordinates.lon}` : ''}`}
+                onChange={(e) => {
+                  const [lat, lon] = e.target.value.split(',').map((val) => val.trim());
+                  setCoordinates({ lat: lat || '', lon: lon || '' });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleQuery(); // Realiza a consulta ao pressionar Enter
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Exemplo: -15.886986, -47.984292"
+              />
             </div>
             <button
               onClick={handleQuery} // Realiza a consulta ao clicar no botão
