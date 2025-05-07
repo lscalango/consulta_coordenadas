@@ -8,18 +8,12 @@ A aplicação utiliza tecnologias modernas como React, integração com APIs RES
 
 Funcionalidades
 
-    Inserção de coordenadas no formato WGS84 (latitude, longitude).
-    
-    Consulta a múltiplos serviços de mapas, incluindo:
-    
-    Geoportal
-    
-    Sisdia
-    
-    Terrageo (com autenticação via token).
-    
-    Exibição de resultados em uma tabela interativa.
-    
+    Inserção de coordenadas no formato WGS84 (latitude, longitude);   
+    Consulta a múltiplos serviços de mapas, incluindo:( 
+    Geoportal,    
+    Sisdia,    
+    Terrageo (com autenticação via token));    
+    Exibição de resultados em uma tabela interativa;    
     Detalhamento de camadas específicas.
     
     Feedback visual durante o processo de consulta (spinners e mensagens de erro).
