@@ -198,7 +198,11 @@ function App() {
           } else if (service.type === 'WMS') {
             // Consulta para serviços WMS
             result = await queryWMSService(service.url, x, y);
-            result = { ...result, layerName: service.name };
+            result = {
+              ...result,
+              layerName: service.name,
+              hasIntersection: result.attributes !== null, // Define "Sim" ou "Não" com base nos atributos
+            };
           }
   
           results.push(result);
