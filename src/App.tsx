@@ -108,7 +108,7 @@ function App() {
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/LUOS/MapServer/11',
       type: 'REST',
     },
-    /*{
+    {
       name: 'Sisdia - App - Borda de Chapada',
       url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/0',
       type: 'REST',
@@ -147,7 +147,7 @@ function App() {
     name: 'IBRAM - Unidades de Conservação (WFS)',
     url: 'https://onda.ibram.df.gov.br/server/services/Unidade_Conservacao/Unidades_de_Conservacao_Gestao_IBRAM/MapServer/WFSServer',
     type: 'WFS', // Serviço WFS
-    },*/
+    },
     {
       name: 'Sisdia - Parque Nacional',
       url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parque_Nacional/MapServer/0',
