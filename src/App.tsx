@@ -198,7 +198,7 @@ function App() {
           } else if (service.type === 'WMS' || service.type === 'WFS') {
             // Consulta para serviços WMS e WFS
             result = await queryXMLService(service.url, service.type, x, y);
-            result.layerName = service.name;
+            result = { ...result, layerName: service.name };
           }
   
           results.push(result);
@@ -207,7 +207,7 @@ function App() {
         }
       }
   
-      setQueryResults(results);
+      setQueryResults(results.filter((result): result is { attributes: any; hasIntersection: boolean; layerName: string; } => result !== undefined));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao realizar consulta');
       setQueryResults([]);

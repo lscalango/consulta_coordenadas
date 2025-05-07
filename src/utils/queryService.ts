@@ -96,10 +96,13 @@ export const queryXMLService = async (
     const response = await fetch(requestUrl);
     const text = await response.text();
 
-    console.log('Resposta do serviço:', text);
+    console.log('Resposta do serviço (XML):', text);
 
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(text, 'application/xml');
+
+    // Log da estrutura do XML
+    console.log('Estrutura do XML:', xmlDoc);
 
     // Verificar se há elementos FeatureMember
     const features = xmlDoc.getElementsByTagName('FeatureMember');
@@ -111,7 +114,7 @@ export const queryXMLService = async (
       };
     }
 
-    // Caso não haja FeatureMember, verificar outros elementos
+    // Verificar outros elementos, como "Layer"
     const layers = xmlDoc.getElementsByTagName('Layer');
     if (layers.length > 0) {
       console.log('Camadas encontradas:', layers);
