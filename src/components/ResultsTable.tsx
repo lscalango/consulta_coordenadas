@@ -110,43 +110,31 @@ const ResultsTable: React.FC<ResultsTableProps> = ({ queryResults, setSelectedLa
       </div>
 
       {/* Tabela para exibir os resultados */}
-      <table className="w-full border-collapse">
+      <table className="table-auto w-full border-collapse border border-gray-300">
         <thead>
-          <tr className="bg-gray-50">
-            {/* Cabeçalho da tabela */}
-            <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Camada</th>
-            <th className="text-left py-3 px-4 font-semibold text-gray-600 border-b">Incidência</th>
+          <tr>
+            <th className="border border-gray-300 px-4 py-2">Camada</th>
+            <th className="border border-gray-300 px-4 py-2">Interseção</th>
           </tr>
         </thead>
         <tbody>
           {/* Itera sobre os resultados da consulta e exibe cada camada */}
           {queryResults.map((result, index) => (
-            <tr key={index}>
-              {/* Nome da camada */}
-              <td className="py-3 px-4 border-b">{result.layerName}</td>
-
-              {/* Indicação de interseção */}
-              <td className="py-3 px-4 border-b">
+            <tr
+              key={index}
+              className={result.hasIntersection ? 'cursor-pointer hover:bg-gray-100' : ''}
+              onClick={() => result.hasIntersection && setSelectedLayer(result.layerName)} // Apenas permite clicar se for "Sim"
+            >
+              <td className="border border-gray-300 px-4 py-2">{result.layerName}</td>
+              <td className="border border-gray-300 px-4 py-2">
                 {result.hasIntersection ? (
-                  // Botão para visualizar detalhes da camada
-                  <button
-                    onClick={() => setSelectedLayer(result.layerName)} // Define a camada selecionada
-                    className="text-blue-600 hover:text-blue-800 underline focus:outline-none"
-                  >
-                    Sim (clique para ver detalhes)
-                  </button>
+                  <strong>Sim</strong> // Exibe "Sim" em negrito
                 ) : (
-                  // Indica que não há interseção
                   'Não'
                 )}
               </td>
             </tr>
           ))}
-          {/* Linha adicional com a data e hora */}
-          <tr>
-            <td className="py-3 px-4 border-b font-semibold text-sm">Data e Hora da Análise</td>
-            <td className="py-3 px-4 border-b text-sm">{currentDateTime}</td>
-          </tr>
         </tbody>
       </table>
     </div>

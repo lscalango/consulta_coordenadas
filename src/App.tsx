@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import proj4 from './utils/proj4Config';
-import { queryService } from './utils/queryService';
+import { queryService, queryWMSService } from './utils/queryService';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ResultsTable from './components/ResultsTable';
@@ -35,47 +35,58 @@ function App() {
   const services = [
     {
       name: 'DF Legal - Relatório de Monitoramento',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2',
+      type: 'REST', // Serviço REST
     },
     {
       name: 'DF Legal - Área de Monitoramento Prioritário',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2',
+      type: 'REST',
     },
     {
       name: 'DF Legal - Área em Processo de Urbanização',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2',
+      type: 'REST',
     },
     {
       name: 'PDOT - Area de Proteção de Manancial',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/2',
+      type: 'REST',
     },
     {
       name: 'PDOT - Area de Interesse Ambiental',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/3'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/3',
+      type: 'REST',
     },
     {
       name: 'PDOT - Area Rural com Proteção Ambiental',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/27'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/27',
+      type: 'REST',
     },
     {
       name: 'PDOT - Macrozona - PDOT 2012',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/4'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/PDOT/MapServer/4',
+      type: 'REST',
     },
     {
       name: 'Geportal - Diretrizes Urbanísticas Específicas',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/DIRETRIZES_URBANISTICAS/MapServer/4'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/DIRETRIZES_URBANISTICAS/MapServer/4',
+      type: 'REST',
     },
     {
       name: 'Geoportal - Faixa de Domínio - Rodovias',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/SISTEMA_VIARIO/MapServer/14'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/SISTEMA_VIARIO/MapServer/14',
+      type: 'REST',
     },
     {
       name: 'Geoportal - Lotes Registrados',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Aplicacoes/LOTES_REGISTRADOS/MapServer/0'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Aplicacoes/LOTES_REGISTRADOS/MapServer/0',
+      type: 'REST',
     },
     {
       name: 'Geoportal¹ - Lotes Aprovados e Aguardando Registro',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/1',
+      type: 'REST',
       protected: true,
       credentials: {
         username: 'institucional',
@@ -85,6 +96,7 @@ function App() {
     {
       name: 'Geoportal¹ - Próprios GDF',
       url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Institucional/INSTITUCIONAIS/FeatureServer/6',
+      type: 'REST',
       protected: true,
       credentials: {
         username: 'institucional',
@@ -93,50 +105,69 @@ function App() {
     },
     {
       name: 'Geoportal - Lotes Lei de Uso e Ocupação do Solo',
-      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/LUOS/MapServer/11'
+      url: 'https://www.geoservicos.ide.df.gov.br/arcgis/rest/services/Publico/LUOS/MapServer/11',
+      type: 'REST',
     },
-    {
+    /*{
       name: 'Sisdia - App - Borda de Chapada',
-      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/0'
+      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/0',
+      type: 'REST',
     },
     {
       name: 'Sisdia - App - Cursos Dágua',
-      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/1'
+      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/1',
+      type: 'REST',
     },
     {
       name: 'Sisdia - App - Lagos e Lagoas Naturais',
-      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/2'
+      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/2',
+      type: 'REST',
     },
     {
       name: 'Sisdia - App - Nascentes',
-      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/3'
+      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/3',
+      type: 'REST',
     },
     {
       name: 'Sisdia - App - Reservatórios',
-      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/4'
+      url: 'https://sisdia.df.gov.br/server/rest/services/06_ZEE/APPs_DF/MapServer/4',
+      type: 'REST',
     },
     {
       name: 'Sisdia - Área de Relevante Interesse Ecológico',
-      url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Area_de_Relevante_lnteresse_Ecologico/MapServer/0'
+      url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Area_de_Relevante_lnteresse_Ecologico/MapServer/0',
+      type: 'REST',
     },
     {
       name: 'Sisdia - Parques Ecológicos',
-      url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parques_Ecol%C3%B3gicos/MapServer/0'
+      url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parques_Ecol%C3%B3gicos/MapServer/0',
+      type: 'REST',
     },
     {
+    name: 'IBRAM - Unidades de Conservação (WFS)',
+    url: 'https://onda.ibram.df.gov.br/server/services/Unidade_Conservacao/Unidades_de_Conservacao_Gestao_IBRAM/MapServer/WFSServer',
+    type: 'WFS', // Serviço WFS
+    },*/
+    {
       name: 'Sisdia - Parque Nacional',
-      url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parque_Nacional/MapServer/0'
+      url: 'https://sisdia.df.gov.br/server/rest/services/01_AMBIENTAL/Parque_Nacional/MapServer/0',
+      type: 'REST',
+    },
+    {
+      name: 'IBRAM - Unidades de Conservação (WMS)',
+      url: 'https://onda.ibram.df.gov.br/server/services/Unidade_Conservacao/Unidades_de_Conservacao_Gestao_IBRAM/MapServer/WMSServer',
+      type: 'WMS', // Serviço WMS
     }
   ];
 
   // Função para realizar a consulta aos serviços de mapas
   const handleQuery = async () => {
-    setLoading(true); // Indica que a consulta está em andamento
-    setError(null); // Limpa mensagens de erro anteriores
-    setQueryResults([]); // Limpa os resultados anteriores
-    setSelectedLayer(null); // Reseta a camada selecionada
-    setLoadingCount(services.length); // Define o número total de serviços a serem consultados
-    setCurrentService(null); // Reseta o nome do serviço atual
+    setLoading(true);
+    setError(null);
+    setQueryResults([]);
+    setSelectedLayer(null);
+    setLoadingCount(services.length);
+    setCurrentService(null);
   
     try {
       const lat = parseFloat(coordinates.lat);
@@ -146,38 +177,47 @@ function App() {
         throw new Error('Coordenadas inválidas');
       }
   
-      if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) {
-        setError('Por favor, insira coordenadas válidas no formato "-15.886986, -47.984292".');
-        return;
-      }
-  
       const [x, y] = proj4('EPSG:4326', 'EPSG:31983', [lon, lat]);
   
       const results = [];
       for (const service of services) {
         try {
-          setCurrentService(service.name); // Atualiza o nome da camada em consulta
-          const result = await queryService(
-            service.url,
-            service.name,
-            x,
-            y,
-            service.protected,
-            service.credentials
-          );
-          results.push(result); // Adiciona o resultado ao array
+          setCurrentService(service.name);
+  
+          let result;
+          if (service.type === 'REST') {
+            // Consulta para serviços REST
+            result = await queryService(
+              service.url,
+              service.name,
+              x,
+              y,
+              service.protected,
+              service.credentials
+            );
+          } else if (service.type === 'WMS') {
+            // Consulta para serviços WMS
+            result = await queryWMSService(service.url, x, y);
+            result = {
+              ...result,
+              layerName: service.name,
+              hasIntersection: result.attributes !== null, // Define "Sim" ou "Não" com base nos atributos
+            };
+          }
+  
+          results.push(result);
         } finally {
-          setLoadingCount((prev) => prev - 1); // Decrementa o contador após cada consulta
+          setLoadingCount((prev) => prev - 1);
         }
       }
   
-      setQueryResults(results); // Armazena todos os resultados
+      setQueryResults(results.filter((result): result is { attributes: any; hasIntersection: boolean; layerName: string; } => result !== undefined));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao realizar consulta');
       setQueryResults([]);
     } finally {
-      setLoading(false); // Indica que a consulta foi concluída
-      setCurrentService(null); // Limpa o nome do serviço atual
+      setLoading(false);
+      setCurrentService(null);
     }
   };
 
