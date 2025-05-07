@@ -7,13 +7,21 @@ Este projeto é uma aplicação web desenvolvida para realizar consultas de cama
 A aplicação utiliza tecnologias modernas como React, integração com APIs REST de serviços ArcGIS e suporte a autenticação para serviços protegidos.
 
 Funcionalidades
+
     Inserção de coordenadas no formato WGS84 (latitude, longitude).
+    
     Consulta a múltiplos serviços de mapas, incluindo:
+    
     Geoportal
+    
     Sisdia
+    
     Terrageo (com autenticação via token).
+    
     Exibição de resultados em uma tabela interativa.
+    
     Detalhamento de camadas específicas.
+    
     Feedback visual durante o processo de consulta (spinners e mensagens de erro).
 
 1. Sistemas Operacionais Suportados
