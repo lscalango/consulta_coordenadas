@@ -1,5 +1,7 @@
 README - Consulta de Camadas para Análise de Interferência
+
 Descrição do Projeto
+
 Este projeto é uma aplicação web desenvolvida para realizar consultas de camadas geográficas e análise de interferências em diferentes serviços de mapas. A aplicação permite que o usuário insira coordenadas no formato WGS84 (latitude, longitude) e obtenha informações detalhadas sobre as camadas disponíveis em serviços como Geoportal, Sisdia e Terrageo.
 
 A aplicação utiliza tecnologias modernas como React, integração com APIs REST de serviços ArcGIS e suporte a autenticação para serviços protegidos.
