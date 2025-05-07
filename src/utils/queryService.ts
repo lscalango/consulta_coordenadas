@@ -86,7 +86,7 @@ export const queryXMLService = async (
       const i = Math.floor(width / 2);
       const j = Math.floor(height / 2);
 
-      requestUrl = `${url}?service=WMS&request=GetFeatureInfo&version=1.3.0&layers=0&query_layers=0&info_format=application/xml&crs=EPSG:4326&bbox=${xmin},${ymin},${xmax},${ymax}&width=${width}&height=${height}&i=${i}&j=${j}`;
+      requestUrl = `${url}?service=WMS&request=GetFeatureInfo&version=1.3.0&layers=0&query_layers=0&info_format=text/xml&crs=EPSG:4326&bbox=${xmin},${ymin},${xmax},${ymax}&width=${width}&height=${height}&i=${i}&j=${j}`;
     } else if (type === 'WFS') {
       requestUrl = `${url}?service=WFS&request=GetFeature&version=2.0.0&typename=0&outputFormat=application/xml&bbox=${lon},${lat},${lon},${lat},EPSG:4326`;
     }
@@ -94,41 +94,86 @@ export const queryXMLService = async (
     console.log('URL da requisição:', requestUrl);
 
     const response = await fetch(requestUrl);
+    const contentType = response.headers.get('Content-Type');
+    console.log('Content-Type da resposta:', contentType);
+
     const text = await response.text();
+    console.log('Resposta do serviço:', text);
 
-    console.log('Resposta do serviço (XML):', text);
+    if (contentType && contentType.includes('application/geo+json')) {
+      const data = await response.json();
+      console.log('Resposta GeoJSON:', data);
 
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(text, 'application/xml');
-
-    // Log da estrutura do XML
-    console.log('Estrutura do XML:', xmlDoc);
-
-    // Verificar se há elementos FeatureMember
-    const features = xmlDoc.getElementsByTagName('FeatureMember');
-    if (features.length > 0) {
-      console.log('FeatureMember encontrado:', features);
       return {
-        attributes: features,
-        hasIntersection: true,
+        attributes: data.features || null,
+        hasIntersection: data.features && data.features.length > 0,
+      };
+    } else if (contentType && contentType.includes('text/xml')) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(text, 'application/xml');
+
+      // Exibir a estrutura completa do XML
+      const xmlString = new XMLSerializer().serializeToString(xmlDoc);
+      console.log('Estrutura completa do XML (como string):', xmlString);
+
+      // Dividir o XML em partes menores, se necessário
+      const chunkSize = 1000;
+      for (let i = 0; i < xmlString.length; i += chunkSize) {
+        console.log(xmlString.substring(i, i + chunkSize));
+      }
+
+      // Verificar se há elementos relevantes no XML
+      const features = xmlDoc.getElementsByTagName('FeatureMember');
+      if (features.length > 0) {
+        console.log('FeatureMember encontrado:', features);
+        return {
+          attributes: features,
+          hasIntersection: true,
+        };
+      }
+
+      // Verificar outros elementos, como "Feature"
+      const featuresAlt = xmlDoc.getElementsByTagName('Feature');
+      if (featuresAlt.length > 0) {
+        console.log('Feature encontrado:', featuresAlt);
+        return {
+          attributes: featuresAlt,
+          hasIntersection: true,
+        };
+      }
+
+      // Verificar outros elementos, como "Layer"
+      const layers = xmlDoc.getElementsByTagName('Layer');
+      if (layers.length > 0) {
+        console.log('Camadas encontradas:', layers);
+        return {
+          attributes: layers,
+          hasIntersection: true,
+        };
+      }
+
+      const serviceException = xmlDoc.getElementsByTagName('ServiceException');
+      if (serviceException.length > 0) {
+        console.error('Erro retornado pelo serviço:', serviceException[0].textContent);
+        return {
+          attributes: null,
+          hasIntersection: false,
+          error: serviceException[0].textContent,
+        };
+      }
+
+      console.warn('Nenhum dado relevante encontrado no XML.');
+      return {
+        attributes: null,
+        hasIntersection: false,
+      };
+    } else {
+      console.warn('Formato de resposta não suportado:', contentType);
+      return {
+        attributes: null,
+        hasIntersection: false,
       };
     }
-
-    // Verificar outros elementos, como "Layer"
-    const layers = xmlDoc.getElementsByTagName('Layer');
-    if (layers.length > 0) {
-      console.log('Camadas encontradas:', layers);
-      return {
-        attributes: layers,
-        hasIntersection: true,
-      };
-    }
-
-    console.warn('Nenhum dado relevante encontrado na resposta do serviço.');
-    return {
-      attributes: null,
-      hasIntersection: false,
-    };
   } catch (error) {
     console.error(`Erro ao consultar o serviço ${type}:`, error);
     throw error;
