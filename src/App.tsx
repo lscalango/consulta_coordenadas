@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import proj4 from './utils/proj4Config';
-import { queryService, queryXMLService } from './utils/queryService';
+import { queryService, queryWMSService } from './utils/queryService';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ResultsTable from './components/ResultsTable';
@@ -195,9 +195,9 @@ function App() {
               service.protected,
               service.credentials
             );
-          } else if (service.type === 'WMS' || service.type === 'WFS') {
-            // Consulta para serviços WMS e WFS
-            result = await queryXMLService(service.url, service.type, x, y);
+          } else if (service.type === 'WMS') {
+            // Consulta para serviços WMS
+            result = await queryWMSService(service.url, x, y);
             result = { ...result, layerName: service.name };
           }
   

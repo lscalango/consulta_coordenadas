@@ -179,3 +179,46 @@ export const queryXMLService = async (
     throw error;
   }
 };
+
+export const queryWMSService = async (url: string, x: number, y: number) => {
+  // Defina o BBOX com base nas coordenadas no CRS EPSG:31983
+  const tolerance = 3; // Tolerância em metros
+  const bbox = `${x - tolerance},${y - tolerance},${x + tolerance},${y + tolerance}`;
+  const width = 256;
+  const height = 256;
+  const i = Math.floor(width / 2); // Coordenada X no centro da imagem
+  const j = Math.floor(height / 2); // Coordenada Y no centro da imagem
+
+  // Construir a URL de consulta usando EPSG:31983
+  const queryUrl = `${url}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetFeatureInfo&LAYERS=0&QUERY_LAYERS=0&CRS=EPSG:31983&BBOX=${bbox}&WIDTH=${width}&HEIGHT=${height}&I=${i}&J=${j}&INFO_FORMAT=text/xml`;
+
+  console.log('URL de consulta WMS:', queryUrl);
+
+  const response = await fetch(queryUrl);
+
+  // Verifica se a resposta é válida
+  if (!response.ok) {
+    const errorText = await response.text(); // Captura o texto da resposta de erro
+    throw new Error(`Erro ao consultar o serviço WMS: ${response.statusText}. Detalhes: ${errorText}`);
+  }
+
+  // Verifica o cabeçalho Content-Type
+  const contentType = response.headers.get('Content-Type');
+  if (!contentType || !contentType.includes('text/xml')) {
+    const errorText = await response.text(); // Captura o texto da resposta
+    throw new Error(`Resposta inválida do serviço WMS. Esperado XML, recebido: ${contentType}. Detalhes: ${errorText}`);
+  }
+
+  // Tenta interpretar a resposta como XML
+  const textData = await response.text();
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(textData, 'application/xml');
+
+  // Extraia informações relevantes do XML
+  const featureInfo = xmlDoc.querySelector('FeatureInfo');
+
+  return {
+    hasIntersection: !!featureInfo,
+    attributes: featureInfo ? featureInfo.textContent : null,
+  };
+};
