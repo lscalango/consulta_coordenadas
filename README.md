@@ -56,18 +56,7 @@ Como Executar o Projeto:
   
   Certifique-se de que o domínio do aplicativo está autorizado no Portal for ArcGIS.
   
-  Atualize as credenciais no arquivo app.tsx
-
-      {
-        name: 'Terrageo - Fundiário - Imóveis Rurais',
-        url: 'https://terrageo2.terracap.df.gov.br/arcgis/rest/services/ImoveisRurais/Fundiario1/MapServer/0',
-        protected: true,
-        credentials: {
-          username: 'seu-usuario',
-          password: 'sua-senha',
-        },
-      }
-
+  
 Estrutura do Projeto
 
 src/components: Componentes reutilizáveis, como Header, Footer, ResultsTable e DetailedResults.
